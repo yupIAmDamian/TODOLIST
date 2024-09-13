@@ -1,33 +1,32 @@
 import React, { useState } from "react";
-import axios from "axios";
 import httpClient from "../../httpClient";
 import { useNavigate } from "react-router-dom";
 
+import "./index.css"
+
 const Auth = ({}) => {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("giras@gmail.com");
-  const [password, setPassword] = useState("18125");
-  const [authType, setAuthType] = useState("register");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [authType, setAuthType] = useState("Log-in");
 
   const handleAuth = async () => {
     try {
       const user = { email: email, password: password };
-      const res = await httpClient.post(
-        `http://localhost:5000/login`, //${authType}
-        user
-      );
-      console.log(res.data);
-
-      const res_client = await httpClient.get("http://127.0.0.1:5000/@me");
-      console.log(res_client.data);
-      //navigate('/task');
+      httpClient.post(`/${authType == "Log-in" ?"login":"register"}`, user).then((response)=>{
+        console.log(response)
+        if(!response.data.error){
+          navigate("/task")
+        }
+      })
     } catch (e) {
       console.log(e);
     }
   };
 
+
   return (
-    <div>
+    <div className="authWrapper">
       <input
         placeholder="Email"
         type="text"
@@ -40,7 +39,9 @@ const Auth = ({}) => {
         value={password}
         onChange={(e) => setPassword(e.target.value)}
       />
-      <button
+
+      <div className="authBTNWrapper">
+        <button
         onClick={(e) => {
           handleAuth();
         }}
@@ -49,11 +50,13 @@ const Auth = ({}) => {
       </button>
       <button
         onClick={() =>
-          setAuthType(authType == "register" ? "login" : "register")
+          setAuthType(authType == "Register" ? "Log-in" : "Register")
         }
       >
-        Change to {authType == "register" ? "login" : "register"}
+        Change to {authType == "Register" ? "Log-in" : "Register"}
       </button>
+      </div>
+      
     </div>
   );
 };

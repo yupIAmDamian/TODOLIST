@@ -11,8 +11,9 @@ const Router = ()=>{
     <BrowserRouter>
       <Routes>
         <Route path="/task" element={ <Tasks/>}/>
-        <Route path="/auth" element={<Auth/>} />
-        <Route path="*" Component={NotFound}/>
+        <Route path="*" element={<Auth/>} />
+        {// <Route path="*" Component={NotFound}/> 
+}
       </Routes>
     </BrowserRouter>
   )
