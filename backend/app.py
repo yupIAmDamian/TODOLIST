@@ -5,7 +5,6 @@ from flask_session import Session
 from config import AppliacationConfig
 from models import db, User, Task
 from datetime import timedelta
-from flask_cors import cross_origin
 
 app = Flask(__name__)
 app.config.from_object(AppliacationConfig)
@@ -16,7 +15,7 @@ CORS(app, supports_credentials=True)
 server_session = Session(app)
 db.init_app(app)
 
-@cross_origin
+
 @app.route("/register", methods=["POST"])
 def register_user():
   email = request.json["email"]
@@ -25,21 +24,25 @@ def register_user():
   user_exists = User.query.filter_by(email=email).first() is not None
 
   if user_exists:
-    return jsonify({"error": "User already exists"})
+    return jsonify({"error": "User already exists"}),401
   
   hashed_password = bcrypt.generate_password_hash(password)
 
   new_user = User(email=email, password=hashed_password)
+
+
   db.session.add(new_user)
   db.session.commit()
 
+  session["user_id"] = new_user.id
+  session.permanent = True
 
   return jsonify({
     "id":new_user.id,
     "email": new_user.email
   })
 
-@cross_origin
+
 @app.route("/login", methods=["POST"])
 def login_user():
     email = request.json["email"]
@@ -59,15 +62,6 @@ def login_user():
     response = jsonify({"message": "Logged in successfully!", "user_id": user.id})
     return response
 
-@cross_origin
-@app.route("/@me", methods=["GET"])
-def get_current_user():
-  user_id = session.get("user_id")
-
-  return jsonify({
-    "id":user_id,
-  })
-
 @app.route('/logout', methods=['POST'] )
 def logout():
    session.pop('user_id', None)
@@ -76,7 +70,6 @@ def logout():
 @app.route("/task", methods=['GET',"POST"])
 def tasks():
   user_id = session.get("user_id")
-
   if request.method == "POST":
       data = request.get_json()
 
@@ -93,24 +86,31 @@ def tasks():
       tasks = Task.query.filter_by(user_id = user_id).all()
       return  jsonify([{'id': task.id, 'content': task.content, "user_id":user_id} for task in tasks])
 
+   
+@app.route("/task/<int:id>", methods=["DELETE", "PATCH"])
+def delete_update_task(id):
+  task = Task.query.get_or_404(id)
+  user_id = session.get("user_id")
 
-   
-@app.route("/task/<int:id>", methods=["DELETE"])
-def delete_task(id):
-   task = Task.query.get_or_404(id)
-   user_id = session.get("user_id")
+  if not user_id:
+    return jsonify({"error": "User not logged in"}), 401
+  
+  user = User.query.filter_by(id=user_id).first()
+    
+  if task.author != user:
+    return jsonify({"error": "User not found"}), 401
 
-   if not user_id:
-      return jsonify({"error": "User not logged in"}), 401
-   
-   user = User.query.filter_by(id=user_id).first()
-   
-   if task.author != user:
-      return jsonify({"error": "User not found"}), 401
-   
-   db.session.delete(task)
-   db.session.commit()
-   return jsonify({"message":'Task deleted successfully'})
+
+  if request.method == "DELETE":
+    db.session.delete(task)
+    db.session.commit()
+    return jsonify({"message":'Task deleted successfully'})
+  else:
+    data = request.json
+    task.content = data.get("content", task.content)
+
+    db.session.commit()
+    return jsonify({"message":'Task Updated successfully'})
 
 
 if __name__ == "__main__":
